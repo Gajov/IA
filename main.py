@@ -6,12 +6,13 @@ import imageio.v2 as imageio
 
 # ================= CONFIG =================
 TAMANHO_POP = 200
-GERACOES = 51
+GERACOES = 65
 TAXA_CROSS = 0.9
-TAXA_MUT = 0.15
-MAXMUT = 1
-ELITESIZE = 2
-TORNEIOSIZE = 5
+TAXA_MUT = 0.5
+MAXMUT = 2.5
+ELITESIZE = 3
+TORNEIOSIZE = 2
+FRM = 6 # Fator de Regressão da Taxa de Mutação
 
 # ==========================================
 
@@ -31,9 +32,9 @@ def calcula_fitness(populacao):
 def calcula_fitness_medio(populacao):
     return sum(fitness(ind[0], ind[1]) for ind in populacao) / len(populacao)
 
-def mutar_individuos(individuo, taxa_mutacao=TAXA_MUT):
-    for i in range(len(individuo)):
-        if random.random() < taxa_mutacao:
+def mutar_individuos(individuo, taxa_mutacao):
+    if random.random() < taxa_mutacao:
+        for i in range(len(individuo)):
             individuo[i] += random.gauss(0,MAXMUT)
             individuo[i] = max(-10, min(10, individuo[i]))
     return individuo
@@ -98,52 +99,72 @@ def plotar_geracao(populacao, geracao, pasta="frames"):
     plt.close()
 
 # --- EXECUÇÃO ---
+sucs = 0
+for i in range(1):
+    # limpa frames antigos
+    if os.path.exists("frames"):
+        for f in os.listdir("frames"):
+            os.remove(os.path.join("frames", f))
 
-# limpa frames antigos
-if os.path.exists("frames"):
-    for f in os.listdir("frames"):
-        os.remove(os.path.join("frames", f))
+    historico_fitness = []
+    historico_fitness_medio = []
 
-historico_fitness = []
-historico_fitness_medio = []
+    populacao = criar_população(TAMANHO_POP)
 
-populacao = criar_população(TAMANHO_POP)
+    melhor_f = 0
+    fit_medio = 0
+    for g in range(GERACOES):
+        #TAXA_MUT_G = TAXA_MUT * max(0,(1-(g/(GERACOES-5))**FRM))
+        # normaliza tempo
+        x = g / (GERACOES - 5)
 
-for g in range(GERACOES):
-    fits = calcula_fitness(populacao)
-    fit_medio = calcula_fitness_medio(populacao)
-    melhor_f = max(fits)
+        # decaimento temporal (controla convergência final)
+        decay = (1 - x**FRM)
 
-    historico_fitness.append(melhor_f)
-    historico_fitness_medio.append(fit_medio)
+        # diferença entre melhor e médio (estado da população)
+        delta = (melhor_f - fit_medio) / (abs(melhor_f)+0.0000001)
 
-    if g % 2 == 0 or g == GERACOES - 1:
-        plotar_geracao(populacao, g)
+        # mutação adaptativa + decaimento
+        TAXA_MUT_G = max(0.0,decay * (0 + (TAXA_MUT - 0) * np.exp(-5 * delta)))
 
-    # elitismo
-    elite_idx = np.argsort(fits)[-ELITESIZE:]
-    nova_pop = [populacao[i].copy() for i in elite_idx]
+        fits = calcula_fitness(populacao)
+        fit_medio = calcula_fitness_medio(populacao)
+        melhor_f = max(fits)
+
+        historico_fitness.append(melhor_f)
+        historico_fitness_medio.append(fit_medio)
+
+        if g % 2 == 0 or g == GERACOES - 1:
+            plotar_geracao(populacao, g)
+
+        # elitismo
+        elite_idx = np.argsort(fits)[-ELITESIZE:]
+        nova_pop = [populacao[i].copy() for i in elite_idx]
 
 
-    while len(nova_pop) < TAMANHO_POP:
-        p1 = selecao_torneio(populacao, fits)
-        p2 = selecao_torneio(populacao, fits)
+        while len(nova_pop) < TAMANHO_POP:
+            p1 = selecao_torneio(populacao, fits)
+            p2 = selecao_torneio(populacao, fits)
 
-        if random.random() < TAXA_CROSS:
-                f1, f2 = crossover(p1, p2)
-        else:
-            f1, f2 = p1.copy(), p2.copy()
+            if random.random() < TAXA_CROSS:
+                    f1, f2 = crossover(p1, p2)
+            else:
+                f1, f2 = p1.copy(), p2.copy()
 
-        f1 = mutar_individuos(f1)
-        f2 = mutar_individuos(f2)
+            f1 = mutar_individuos(f1,TAXA_MUT_G)
+            f2 = mutar_individuos(f2, TAXA_MUT_G)
 
-        nova_pop.append(f1)
-        if len(nova_pop) < TAMANHO_POP:
-            nova_pop.append(f2)
+            nova_pop.append(f1)
+            if len(nova_pop) < TAMANHO_POP:
+                nova_pop.append(f2)
 
-    populacao = nova_pop
+        populacao = nova_pop
 
-    print(f"Geracao {g}: Melhor={melhor_f:.6f} | Medio={fit_medio:.6}")
+        print(f"Geracao {g}: Melhor={melhor_f:.6f} | Medio={fit_medio:.6} | TAXAMUT={TAXA_MUT_G:.2}")
+    if melhor_f>0.9904:
+        sucs += 1 
+
+print(f"Taxa de sucesso: {sucs}%")
 
 # --- GIF ---
 
