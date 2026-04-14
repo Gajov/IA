@@ -6,7 +6,7 @@ import imageio.v2 as imageio
 
 # ================= CONFIG =================
 TAMANHO_POP = 200
-GERACOES = 65
+GERACOES = 71
 TAXA_CROSS = 0.9
 TAXA_MUT = 0.5
 MAXMUT = 2.5
@@ -116,7 +116,7 @@ for i in range(1):
     for g in range(GERACOES):
         #TAXA_MUT_G = TAXA_MUT * max(0,(1-(g/(GERACOES-5))**FRM))
         # normaliza tempo
-        x = g / (GERACOES - 5)
+        x = g / (GERACOES - 10)
 
         # decaimento temporal (controla convergência final)
         decay = (1 - x**FRM)
