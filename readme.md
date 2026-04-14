@@ -1,117 +1,241 @@
-# 🧬 Algoritmo Genético: Otimização da Função Schaffer's f6
+# 📘 Algoritmo Genético com Mutação Adaptativa
 
-Este projeto implementa um **Algoritmo Genético (AG)** para encontrar o valor máximo da função **Schaffer's f6**, um problema clássico de otimização multidimensional conhecido por sua superfície complexa e pela presença de diversos ótimos locais.
+## 📌 Visão Geral
 
----
+Este projeto implementa um **Algoritmo Genético (AG)** para otimização da função **Schaffer F6**, um problema clássico multimodal com vários ótimos locais.
 
-## 🛠️ Justificativa dos Parâmetros e Funções
+O objetivo é encontrar o **máximo global da função**, utilizando técnicas evolutivas como:
 
-### 1. Representação do Cromossomo (Real)
-
-Optamos pela **representação real** em vez da binária.
-
-**Por quê?**  
-Segundo os slides da disciplina (pág. 26–28), a representação real é ideal para otimização de funções contínuas. Ela evita o erro de discretização e permite que os genes (`x`, `y`) sejam manipulados diretamente na escala do problema, garantindo maior precisão decimal.
-
----
-
-### 2. Função de Aptidão (Fitness)
-
-A função de fitness utilizada é a própria **Schaffer's f6**.
-
-**A dificuldade dela:**  
-Ela possui um único pico global de valor `1.0` em `(0,0)`, mas é cercada por infinitos "anéis" (ótimos locais), que podem aprisionar algoritmos menos robustos.
+- Seleção por torneio  
+- Crossover aritmético  
+- Mutação gaussiana  
+- Elitismo  
+- Mutação adaptativa baseada em diversidade  
 
 ---
 
-### 3. Seleção por Torneio (`k = 3`)
+## ⚙️ Configurações
 
-**Por quê?**  
-Diferente da roleta, o torneio mantém uma pressão seletiva constante e não depende da soma total dos fitness da população. (definição dos slides)
+```python
+TAMANHO_POP = 300
+GERACOES = 61
+TAXA_CROSS = 0.8
+TAXA_MUT = 0.5
+MAXMUT = 2.5
+ELITESIZE = 10
+TORNEIOSIZE = 5
+FRM = 6
+PLOT = 'off'
+```
 
-Ao escolher 3 indivíduos aleatórios e selecionar o melhor:
-- Indivíduos bons têm alta chance de reprodução
-- Indivíduos menos aptos ainda podem sobreviver ocasionalmente
+### 🔍 Parâmetros
 
-Isso ajuda a manter a diversidade da população.
-
----
-
-### 4. Recombinação (Crossover Aritmético)
-
-Utilizamos média ponderada entre os genes dos pais (`α = 0.5`). - crossover aritmético
-
-**Por quê?**  
-Para cromossomos reais, isso garante que o filho esteja exatamente no espaço geométrico entre os pais, refinando a busca em direção ao ótimo.
-
----
-
-### 5. Mutação Gaussiana (`σ = 5`)
-
-Aplicamos um deslocamento baseado em uma distribuição normal.
-
-**Por quê?**  
-A mutação é o principal mecanismo de **exploração**:
-- Pequenos ajustes finos na maioria das vezes
-- Possibilidade de saltos maiores para escapar dos ótimos locais, como explicado
+- **TAMANHO_POP**: número de indivíduos por geração  
+- **GERACOES**: número total de gerações  
+- **TAXA_CROSS**: probabilidade de crossover  
+- **TAXA_MUT**: taxa base de mutação  
+- **MAXMUT**: intensidade máxima da mutação (desvio padrão)  
+- **ELITESIZE**: número de indivíduos preservados  
+- **TORNEIOSIZE**: tamanho do torneio  
+- **FRM**: controla o decaimento da mutação  
+- **PLOT**: ativa/desativa visualização  
 
 ---
 
-### 6. Elitismo (`n = 2`)
+## 🧬 Representação
 
-**Por quê?**  
-Evita que as melhores soluções sejam perdidas durante as operações genéticas.
+Cada indivíduo é um vetor:
 
-Garantir a sobrevivência dos 2 melhores indivíduos faz com que o fitness da população seja **monótono não-decrescente**.
+```python
+[x, y]
+```
 
----
+Onde:
 
-### 7. Espaço de Busca (`[-100, 100]`)
-
-**Por quê?**  
-Um domínio amplo testa a capacidade do algoritmo de localizar uma região extremamente pequena (o ótimo global em `(0,0)`), demonstrando eficiência de busca global. - ao testar com um espaço de busca pequeno, podemos alcançar um resultado prematuro com alto fit e ficar preso em um ótimo local sem conseguir sair
+- x, y ∈ [-10, 10]
 
 ---
 
-## 📈 Como avaliar os resultados
+## 🎯 Função Objetivo
 
-### 🔹 1. Valor do Melhor Fitness
+A função Schaffer F6:
 
-- **Excelente:** próximo de `1.0000` (ex: `0.9903+`)
-- **Regular:** entre `0.80` e `0.95`
-  - Indica possível aprisionamento em ótimo local
-  - Sugestão: aumentar taxa de mutação
-
----
-
-### 🔹 2. Gráfico de Convergência
-
-- Deve subir rapidamente nas primeiras gerações
-- Depois estabilizar próximo do valor máximo
-
-⚠️ Se a linha estiver reta desde o início:
-- Espaço de busca pode estar pequeno demais
-- População pode estar pouco diversa
+- Possui múltiplos ótimos locais  
+- Ótimo global ≈ 1  
+- Desafiadora para algoritmos de busca  
 
 ---
 
-### 🔹 3. Distribuição Espacial (Gráfico de Dispersão)
+## 🔧 Etapas do Algoritmo
 
-- **Início:** pontos espalhados
-- **Final:** pontos concentrados em `(0,0)`
+### 1. Inicialização
 
-⚠️ Se ainda houver dispersão no final:
-- O algoritmo não convergiu adequadamente
+- População aleatória no intervalo [-10, 10]
 
 ---
 
-## 🚀 Como rodar o projeto
+### 2. Avaliação de Fitness
 
-### 1. Instale as dependências
+- Mede a qualidade de cada indivíduo  
+- Quanto maior, melhor  
 
-```bash
-Certifique-se de ter numpy e matplotlib instalados.
+---
 
-Execute python alg_genetico.py.
+### 3. Seleção (Torneio)
 
-Confira os frames gerados na pasta /frames.
+- Seleciona `k` indivíduos aleatórios  
+- Retorna o melhor  
+
+✔ Simples e eficiente  
+
+---
+
+### 4. Crossover
+
+Crossover aritmético:
+
+```
+filho = α * pai1 + (1 - α) * pai2
+```
+
+- Gera dois filhos interpolando os pais  
+
+---
+
+### 5. Mutação
+
+- Ruído gaussiano:
+  - Média = 0  
+  - Desvio = MAXMUT  
+- Mantém valores no intervalo permitido  
+
+---
+
+## 🔥 Mutação Adaptativa
+
+A taxa de mutação varia conforme:
+
+### 🕒 Tempo (gerações)
+
+```python
+x = g / (GERACOES - 5)
+decay = (1 - x**FRM)
+```
+
+- Reduz a mutação ao longo do tempo  
+- FRM controla o formato da curva  
+
+---
+
+### 🌍 Diversidade da população
+
+```python
+delta = (melhor_f - fit_medio) / (abs(melhor_f) + 1e-7)
+```
+
+- Mede o quão homogênea está a população  
+
+---
+
+### ⚡ Fórmula final
+
+```python
+TAXA_MUT_G = decay * TAXA_MUT * np.exp(-delta)
+```
+
+### 🧠 Interpretação
+
+- População homogênea → mutação aumenta  
+- População diversa → mutação diminui  
+- Gerações avançadas → mutação diminui  
+
+✔ Balanceia exploração e refinamento  
+
+---
+
+## 🏆 Elitismo
+
+- Mantém os melhores indivíduos  
+- Evita perda de boas soluções  
+
+---
+
+## 🔁 Loop Evolutivo
+
+Para cada geração:
+
+1. Avalia fitness  
+2. Aplica elitismo  
+3. Seleciona pais  
+4. Aplica crossover  
+5. Aplica mutação  
+6. Gera nova população  
+
+---
+
+## 🎯 Critério de Sucesso
+
+```python
+if melhor_f > 0.9904:
+```
+
+- Considera solução próxima do ótimo global  
+
+---
+
+## 🔄 Execução
+
+- O algoritmo roda 100 vezes  
+- Calcula a taxa de sucesso  
+
+---
+
+## 📈 Visualização (Opcional)
+
+### 🖼️ Frames
+
+- Mostram a evolução da população ao longo das gerações  
+
+### 🎞️ GIF
+
+- Arquivo gerado: `evolucao.gif`  
+
+---
+
+### 📊 Gráfico Final
+
+- Arquivo gerado: `evolucao_fitness.png`  
+
+Mostra:
+
+- Melhor fitness por geração  
+- Fitness médio  
+
+---
+
+## 📊 Interpretação dos Resultados
+
+- Convergência rápida → algoritmo eficiente  
+- Fitness médio próximo do melhor → população convergiu  
+- Oscilações → exploração ativa  
+
+---
+
+## 🚀 Melhorias Possíveis
+
+- Mutação adaptativa por indivíduo  
+- Crossover avançado (BLX-α, SBX)  
+- Reinicialização parcial da população  
+- Paralelização  
+
+---
+
+## 🧠 Conclusão
+
+O algoritmo combina:
+
+- Técnicas clássicas de algoritmos genéticos  
+- Controle adaptativo da taxa de mutação  
+- Estratégias de exploração e refinamento  
+
+✔ Resultado: método robusto para otimização em espaços complexos e multimodais
